@@ -49,6 +49,17 @@ func main() {
 	}
 	defer tc.Close()
 
+	ping, err := tc.Ping(ctx)
+	if err != nil {
+		slog.Error("failed to ping Teleport", "error", err)
+		os.Exit(1)
+	}
+	slog.Info("connected to Teleport",
+		"cluster", ping.ClusterName,
+		"proxy", ping.ProxyPublicAddr,
+		"server_version", ping.ServerVersion,
+	)
+
 	w := watcher.New(tc, cfg)
 	if err := w.Run(ctx); err != nil {
 		slog.Error("watcher exited with error", "error", err)
