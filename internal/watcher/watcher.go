@@ -7,9 +7,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/lipgloss"
 	apiclient "github.com/gravitational/teleport/api/client"
-	apievents "github.com/gravitational/teleport/api/types/events"
 	"github.com/gravitational/teleport/api/types"
+	apievents "github.com/gravitational/teleport/api/types/events"
 
 	"github.com/jsabo/tsentry/internal/config"
 	"github.com/jsabo/tsentry/internal/locker"
@@ -21,6 +22,31 @@ const (
 	pageSize         = 100
 	divider          = "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 )
+
+var (
+	criticalStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("196"))
+	highStyle     = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("202"))
+	mediumStyle   = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("214"))
+	lowStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("34"))
+	dividerStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
+	alertStyle    = lipgloss.NewStyle().Bold(true)
+	lockedStyle   = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("196"))
+)
+
+func riskStyle(level config.RiskLevel) lipgloss.Style {
+	switch level {
+	case config.RiskCritical:
+		return criticalStyle
+	case config.RiskHigh:
+		return highStyle
+	case config.RiskMedium:
+		return mediumStyle
+	case config.RiskLow:
+		return lowStyle
+	default:
+		return lipgloss.NewStyle()
+	}
+}
 
 // sessionEvent holds the fields needed for display and locking. It is
 // populated from either a typed API event (polling mode) or parsed JSON
@@ -154,17 +180,24 @@ func (w *Watcher) fetchAll(ctx context.Context, from, to time.Time) ([]apievents
 
 func (w *Watcher) handle(ctx context.Context, s *sessionEvent) {
 	risk := config.ParseRiskLevel(s.riskLevel)
-	meetsThreshold := risk != config.RiskUnknown && risk >= w.cfg.Threshold
+	if risk == config.RiskUnknown || risk < w.cfg.Threshold {
+		return
+	}
 
 	t := s.eventTime
 	if t.IsZero() {
 		t = time.Now().UTC()
 	}
 
-	fmt.Printf("\n%s\n", divider)
-	fmt.Printf("[ALERT] %s  risk=%-8s  type=%s\n",
+	style := riskStyle(risk)
+	div := dividerStyle.Render(divider)
+	riskLabel := style.Render(fmt.Sprintf("risk=%-8s", strings.ToUpper(s.riskLevel)))
+
+	fmt.Printf("\n%s\n", div)
+	fmt.Printf("%s %s  %s  type=%s\n",
+		alertStyle.Render("[ALERT]"),
 		t.UTC().Format(time.RFC3339),
-		strings.ToUpper(s.riskLevel),
+		riskLabel,
 		s.sessionType,
 	)
 	fmt.Printf("  user:    %s\n", s.username)
@@ -174,12 +207,10 @@ func (w *Watcher) handle(ctx context.Context, s *sessionEvent) {
 		fmt.Printf("  summary: %s\n", indent(s.summary, "           "))
 	}
 
-	if meetsThreshold {
-		fmt.Printf("\n  ▶ %s\n", locker.Command(s.username, w.cfg.LockTTL, s.sessionID))
-	}
-	fmt.Printf("%s\n", divider)
+	fmt.Printf("\n  ▶ %s\n", locker.Command(s.username, w.cfg.LockTTL, s.sessionID))
+	fmt.Printf("%s\n", div)
 
-	if !meetsThreshold || w.locker == nil {
+	if w.locker == nil {
 		return
 	}
 
@@ -188,7 +219,7 @@ func (w *Watcher) handle(ctx context.Context, s *sessionEvent) {
 		fmt.Printf("[ERROR] lock failed for user=%s: %v\n", s.username, err)
 		return
 	}
-	fmt.Printf("[LOCKED] user=%-20s ttl=%s\n\n", s.username, w.cfg.LockTTL)
+	fmt.Printf("%s user=%-20s ttl=%s\n\n", lockedStyle.Render("[LOCKED]"), s.username, w.cfg.LockTTL)
 }
 
 // indent makes continuation lines of multi-line text align with the first line.
