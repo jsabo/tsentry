@@ -44,6 +44,23 @@ release:
   prerelease: auto
   name_template: "tsentry {{.Tag}}"
 
+brews:
+  - name: tsentry
+    repository:
+      owner: jsabo
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    commit_author:
+      name: Jonathan Sabo
+      email: jonathan@sabo.io
+    homepage: "https://github.com/jsabo/tsentry"
+    description: "Watches Teleport AI session summaries and locks high-risk users"
+    license: "Apache-2.0"
+    install: |
+      bin.install "tsentry"
+    test: |
+      system "#{bin}/tsentry", "--version"
+
 changelog:
   sort: asc
   use: github
