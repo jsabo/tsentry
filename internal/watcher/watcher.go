@@ -24,13 +24,14 @@ const (
 )
 
 var (
-	criticalStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("196"))
-	highStyle     = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("202"))
-	mediumStyle   = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("214"))
-	lowStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("34"))
-	dividerStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
-	alertStyle    = lipgloss.NewStyle().Bold(true)
-	lockedStyle   = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("196"))
+	criticalStyle  = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("196"))
+	highStyle      = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("202"))
+	mediumStyle    = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("214"))
+	lowStyle       = lipgloss.NewStyle().Foreground(lipgloss.Color("34"))
+	unscoredStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("243"))
+	dividerStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
+	alertStyle     = lipgloss.NewStyle().Bold(true)
+	lockedStyle    = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("196"))
 )
 
 func riskStyle(level config.RiskLevel) lipgloss.Style {
@@ -180,10 +181,43 @@ func (w *Watcher) fetchAll(ctx context.Context, from, to time.Time) ([]apievents
 
 func (w *Watcher) handle(ctx context.Context, s *sessionEvent) {
 	risk := config.ParseRiskLevel(s.riskLevel)
-	if risk == config.RiskUnknown || risk < w.cfg.Threshold {
+
+	if risk == config.RiskUnknown {
+		if !w.cfg.HideUnscored {
+			w.printUnscored(s)
+		}
 		return
 	}
 
+	if risk < w.cfg.Threshold {
+		return
+	}
+
+	w.printAlert(ctx, s, risk)
+}
+
+func (w *Watcher) printUnscored(s *sessionEvent) {
+	t := s.eventTime
+	if t.IsZero() {
+		t = time.Now().UTC()
+	}
+
+	div := dividerStyle.Render(divider)
+	label := unscoredStyle.Render("[UNSCORED]")
+	riskLabel := unscoredStyle.Render(fmt.Sprintf("risk=%-8s", strings.ToUpper(s.riskLevel)))
+
+	fmt.Printf("\n%s\n", div)
+	fmt.Printf("%s %s  %s  type=%s\n", label, t.UTC().Format(time.RFC3339), riskLabel, s.sessionType)
+	fmt.Printf("  user:    %s\n", s.username)
+	fmt.Printf("  cluster: %s\n", s.clusterName)
+	fmt.Printf("  session: %s\n", s.sessionID)
+	if s.summary != "" {
+		fmt.Printf("  summary: %s\n", indent(s.summary, "           "))
+	}
+	fmt.Printf("%s\n", div)
+}
+
+func (w *Watcher) printAlert(ctx context.Context, s *sessionEvent, risk config.RiskLevel) {
 	t := s.eventTime
 	if t.IsZero() {
 		t = time.Now().UTC()

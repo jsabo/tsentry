@@ -61,6 +61,7 @@ type Config struct {
 	IdentityFile  string // tbot identity file; overrides tsh profile when set
 	TSHProfileDir string // defaults to ~/.tsh
 	Stdin         bool   // read JSON events from stdin instead of polling Teleport
+	HideUnscored  bool   // suppress events where risk level could not be determined
 }
 
 func Parse() (*Config, error) {
@@ -77,6 +78,7 @@ func Parse() (*Config, error) {
 	flag.StringVar(&cfg.IdentityFile, "identity", "", "Path to tbot identity file (overrides tsh profile)")
 	flag.StringVar(&cfg.TSHProfileDir, "tsh-profile-dir", "", "tsh profile directory (default: ~/.tsh)")
 	flag.BoolVar(&cfg.Stdin, "stdin", false, "Read newline-delimited JSON events from stdin (no Teleport connection required)")
+	flag.BoolVar(&cfg.HideUnscored, "hide-unscored", false, "Suppress events where the risk level could not be determined")
 	flag.Parse()
 
 	cfg.Threshold = ParseRiskLevel(threshold)

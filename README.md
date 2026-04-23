@@ -104,6 +104,7 @@ echo '{"event":"session.summarized","risk_level":"critical",...}' | tsentry --st
 | `--auto-lock` | `false` | Execute `tctl lock` (default: print command only) |
 | `--lock-ttl` | `15m` | Duration of the lock when `--auto-lock` is set |
 | `--stdin` | `false` | Read newline-delimited JSON events from stdin |
+| `--hide-unscored` | `false` | Suppress events where risk level could not be determined |
 | `--identity` | _(unset)_ | Path to tbot identity file (overrides tsh profile) |
 | `--tsh-profile-dir` | `~/.tsh` | Override tsh profile directory |
 
