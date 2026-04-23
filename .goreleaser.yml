@@ -44,7 +44,7 @@ release:
   prerelease: auto
   name_template: "tsentry {{.Tag}}"
 
-brews:
+homebrew_casks:
   - name: tsentry
     repository:
       owner: jsabo
