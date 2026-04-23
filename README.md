@@ -41,6 +41,12 @@ echo '{
 
 ## Installation
 
+### Homebrew
+
+```bash
+brew install --cask jsabo/tap/tsentry
+```
+
 ### Download a release
 
 Download the binary for your platform from the [Releases](https://github.com/jsabo/tsentry/releases) page, extract it, and place `tsentry` on your `PATH`.
