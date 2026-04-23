@@ -3,6 +3,7 @@ package config
 import (
 	"flag"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 )
@@ -81,6 +82,10 @@ func Parse() (*Config, error) {
 	cfg.Threshold = ParseRiskLevel(threshold)
 	if cfg.Threshold == RiskUnknown {
 		return nil, fmt.Errorf("invalid --risk-threshold %q: must be low, medium, high, or critical", threshold)
+	}
+
+	if cfg.TSHProfileDir == "" {
+		cfg.TSHProfileDir = os.Getenv("TELEPORT_HOME")
 	}
 
 	return cfg, nil
